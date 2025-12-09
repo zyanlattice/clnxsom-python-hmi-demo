@@ -1,0 +1,1 @@
+DISPLAY=:0 pytest -s tapp.py::test_live

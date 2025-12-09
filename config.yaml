@@ -1,0 +1,40 @@
+# General Environment Configuration
+environment:
+  output_dir: "./results"
+
+  # EVE stabilization time in seconds
+  eve_stabilize_time: 0
+  eve_shutdown_time: 2
+
+# I2C Configuration
+i2c:
+  start_flag: 0x7E
+  bus: 0
+  device_address: 0x30
+  irq_pin: 26
+
+# EVE SDK Configuration
+eve:
+  comport: 0
+  pipeline_version: 0
+  eve_path: '/opt/EVE-6.7.3-Source/lib'
+  driver_path: '/opt/clnx_som/drivers'
+  to_jpg: true
+  copy_image: true
+  max_width: 800
+  use_metadata_camera: false # True - sensing, False - streaming
+
+# EVE AI Features Configuration
+features:
+  face_detection:
+    enabled: true
+  person_detection:
+    enabled: true
+  hand_landmarks:
+    enabled: true
+  face_id:
+    enabled: true
+  face_id_multi:
+    enabled: true
+  object_detection:
+    enabled: false

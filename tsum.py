@@ -3,12 +3,47 @@ import sys
 import re
 import shutil
 import urllib.parse
+import json
 from pathlib import Path
 
 def find_log_file(loop_dir):
     for fname in os.listdir(loop_dir):
         if fname.lower().startswith("logs_") and fname.lower().endswith(".txt"):
             return os.path.join(loop_dir, fname)
+    return None
+
+def extract_user_count(image_path):
+    """
+    Extract user_count from the corresponding metadata JSON file.
+    Given an image like 't_fid_2025-12-09_10-38-46_frame.jpg',
+    look for 't_fid_2025-12-09_10-38-46_metadata.json' in the same directory.
+    Returns the user_count value or None if not found.
+    """
+    if not image_path:
+        return None
+    
+    # Get the directory and filename without extension
+    dir_path = os.path.dirname(image_path)
+    filename_base = os.path.splitext(os.path.basename(image_path))[0]
+    
+    # Remove '_frame' suffix if present to get the base name for metadata
+    if filename_base.endswith('_frame'):
+        filename_base = filename_base[:-6]  # Remove '_frame'
+    
+    # Construct metadata filename
+    metadata_filename = f"{filename_base}_metadata.json"
+    metadata_path = os.path.join(dir_path, metadata_filename)
+    
+    try:
+        if os.path.exists(metadata_path):
+            with open(metadata_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                # user_count is nested under pipeline_data
+                user_count = data.get('pipeline_data', {}).get('user_count')
+                return user_count
+    except Exception as e:
+        print(f"Error reading metadata from {metadata_path}: {e}")
+    
     return None
 
 def parse_log(log_path):
@@ -262,6 +297,12 @@ def generate_html_report(test_folder, output_html="report.html"):
                 selected_image_rel = None
                 selected_exists = False
 
+            # Extract user count from metadata if image exists
+            user_count = None
+            if selected_image_rel and selected_exists:
+                full_image_path = os.path.join(test_folder, selected_image_rel)
+                user_count = extract_user_count(full_image_path)
+            
             failed_entries.append({
                 'no': entry_num,
                 'loop': loop_from_log,
@@ -269,7 +310,8 @@ def generate_html_report(test_folder, output_html="report.html"):
                 'item': item_index,
                 'test_image': img_label,
                 'image': selected_image_rel,
-                'image_exists': selected_exists
+                'image_exists': selected_exists,
+                'user_count': user_count
             })
             print(f"    Added entry #{entry_num}: loop={loop_from_log}, test={test_name}, item={item_index}, test_image={img_label}, image={'yes' if selected_exists else 'no'}")
             entry_num += 1
@@ -401,6 +443,10 @@ def generate_html_report(test_folder, output_html="report.html"):
             width: 10%;
             text-align: center;
         }
+        .usercount-column {
+            width: 10%;
+            text-align: center;
+        }
         .testimg-column {
             width: 20%;
             word-break: break-all;
@@ -450,6 +496,7 @@ def generate_html_report(test_folder, output_html="report.html"):
                 <th class="loop-column">Loop Number</th>
                 <th class="test-column">Fail Test Item</th>
                 <th class="item-column">Failed Item</th>
+                <th class="usercount-column">Extracted User Count</th>
                 <th class="testimg-column">Test Image</th>
                 <th class="image-column">Extracted Image</th>
             </tr>
@@ -476,11 +523,15 @@ def generate_html_report(test_folder, output_html="report.html"):
             # If no copied image, still avoid showing the raw path; show placeholder
             test_img_disp_html = '<span class="no-image">Image not available</span>'
 
+        # Display user count or N/A if not available
+        user_count_display = entry.get('user_count') if entry.get('user_count') is not None else 'N/A'
+        
         html_content += f"""            <tr>
                 <td class="no-column">{idx}</td>
                 <td class="loop-column">{entry['loop']}</td>
                 <td class="test-column">{entry['test']}</td>
                 <td class="item-column">{entry['item']}</td>
+                <td class="usercount-column">{user_count_display}</td>
                 <td class="testimg-column">{test_img_disp_html}</td>
                 <td class="image-column">{image_html}</td>
             </tr>
